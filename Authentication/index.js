@@ -1,7 +1,8 @@
-import express from 'express'
+import express, { text } from 'express'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
 import cookieParser from 'cookie-parser';
+import { MongoClient } from 'mongodb';
 
 
 const app = express();
@@ -9,8 +10,26 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser())
 
-const users = [];
-let id = 0;
+
+
+let users;
+
+const connectDB = async () => {
+    try {
+        const client = new MongoClient("mongodb://localhost:27017/");
+        await client.connect();
+        console.log("Connected To db")
+        const database = client.db("auth");
+        users = database.collection("users")
+    } catch (e) {
+        console.error("Mongodb Conection Error", e.message)
+    }
+
+}
+connectDB()
+
+// const users = [];
+// let id = 0;
 
 
 function authMiddleware(req, res, next) {
@@ -41,17 +60,18 @@ app.post("/api/v1/signup", async (req, res) => {
         return res.status(400).send("Provide Credentials");
     }
 
-    const isExist = users.find((s) => s.username === username)
+    const isExist = await users.findOne({ "username": username })
 
     if (isExist) {
         res.status(409).send("User Exists");
     }
 
     const hashed = await bcrypt.hash(password, 10);
-    users.push({ id, username, hashed });
-    id++;
+    users.insertOne({ username, hashed });
 
-    const token = jwt.sign({ id }, "sdjsnfdjvjhbdfhjsdbjhsbdbjshj");
+    const userId = await users.findOne({ "username": username })
+
+    const token = jwt.sign({ id: userId }, "sdjsnfdjvjhbdfhjsdbjhsbdbjshj");
     res.cookie("token", token, {
         "httpOnly": true,
         "secure": true,
@@ -73,9 +93,9 @@ app.post("/api/v1/login", async (req, res) => {
     }
 
     // check if user exists
-    const user = users.find((s) => s.username === username)
+    const user = await users.findOne({ "username": username })
 
-
+    console.log(user)
     if (!user) {
         return res.status(404).json({
             "success": false,
@@ -97,9 +117,10 @@ app.post("/api/v1/login", async (req, res) => {
     })
     res.cookie("token", token,
         {
-            "httpOnly": true,
-            "secure": true,
-            "sameSite": "strict",
+            "httpOnly": true,   //  disables javascript document to access cookie
+            "secure": true,     // sends cookie over https
+            "sameSite": "strict",   // restrict cookies access and disallow
+            //  sending them along with requests initiated from third-party websites
             maxAge: 24 * 60 * 60 * 1000
         }
     );
@@ -111,6 +132,18 @@ app.post("/api/v1/login", async (req, res) => {
 
 })
 
+app.post("/api/v1/logout", authMiddleware, (req, res) => {
+    res.clearCookie("token", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "strict"
+    });
+
+    res.json({
+        "success": true,
+        "message": "Logout Successful"
+    });
+})
 
 app.get("/api/v1/protected", authMiddleware, (req, res) => {
     res.json({
@@ -118,6 +151,8 @@ app.get("/api/v1/protected", authMiddleware, (req, res) => {
         "data": "jelloooooooo Protected Data is this pilu paoooo"
     })
 })
+
+
 
 
 
