@@ -3,7 +3,8 @@ import jwt from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
 import cookieParser from 'cookie-parser';
 import { MongoClient } from 'mongodb';
-
+import connectMongoDB from './connectMongoDB.js';
+import { User } from './Models/User.js'
 
 const app = express();
 
@@ -12,24 +13,24 @@ app.use(cookieParser())
 
 
 
-let users;
+// let users;
+// const connectDB = async () => {
+//     try {
+//         const client = new MongoClient("mongodb://localhost:27017/");
+//         await client.connect();
+//         console.log("Connected To db")
+//         const database = client.db("auth");
+//         users = database.collection("users")
+//     } catch (e) {
+//         console.error("Mongodb Conection Error", e.message)
+//     }
 
-const connectDB = async () => {
-    try {
-        const client = new MongoClient("mongodb://localhost:27017/");
-        await client.connect();
-        console.log("Connected To db")
-        const database = client.db("auth");
-        users = database.collection("users")
-    } catch (e) {
-        console.error("Mongodb Conection Error", e.message)
-    }
+// }
+// connectDB()
 
-}
-connectDB()
 
-// const users = [];
-// let id = 0;
+connectMongoDB();
+
 
 
 function authMiddleware(req, res, next) {
@@ -60,16 +61,16 @@ app.post("/api/v1/signup", async (req, res) => {
         return res.status(400).send("Provide Credentials");
     }
 
-    const isExist = await users.findOne({ "username": username })
+    const isExist = await User.findOne({ "username": username })
 
     if (isExist) {
-        res.status(409).send("User Exists");
+        return res.status(409).send("User Exists");
     }
 
     const hashed = await bcrypt.hash(password, 10);
-    users.insertOne({ username, hashed });
+    User.create({ username, hashed });
 
-    const userId = await users.findOne({ "username": username })
+    const userId = await User.findOne({ "username": username })
 
     const token = jwt.sign({ id: userId }, "sdjsnfdjvjhbdfhjsdbjhsbdbjshj");
     res.cookie("token", token, {
@@ -93,7 +94,7 @@ app.post("/api/v1/login", async (req, res) => {
     }
 
     // check if user exists
-    const user = await users.findOne({ "username": username })
+    const user = await User.findOne({ "username": username })
 
     console.log(user)
     if (!user) {
@@ -157,4 +158,4 @@ app.get("/api/v1/protected", authMiddleware, (req, res) => {
 
 
 
-app.listen(3000)
+app.listen(3000, console.log("server  Started"));
