@@ -1,5 +1,5 @@
 {
-  "name": "nodejs",
+  "name": "multipart-form-upload-server",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -9,10 +9,10 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "dependencies": {
-    "cookie-parser": "^1.4.7",
+    "busboy": "^1.6.0",
     "express": "^5.2.1",
-    "jsonwebtoken": "^9.0.3"
+    "multer": "^2.0.2"
   }
 }
